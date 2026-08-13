@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Delanchy — Suivi Quai &amp; Tournées</title>
+<style>
+  :root{
+    --navy:#0A2540;
+    --navy-2:#0F3157;
+    --navy-3:#061527;
+    --cyan:#00C2D1;
+    --cyan-2:#5BE7F0;
+    --bg:#EFF4F8;
+    --card:#FFFFFF;
+    --text:#0A2540;
+    --muted:#6B7A90;
+    --danger:#E14848;
+    --success:#1FAE5C;
+    --warning:#F2A93B;
+    --radius:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overscroll-behavior-y:none;}
+  #app{max-width:520px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column; background:var(--bg);}
+
+  /* ---------- Header ---------- */
+  header{background:linear-gradient(135deg,var(--navy) 0%, var(--navy-3) 100%); color:#fff;
+    padding:14px 16px 12px; position:sticky; top:0; z-index:20; box-shadow:0 2px 10px rgba(6,21,39,.25);}
+  .brand-row{display:flex; align-items:center; justify-content:space-between;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .logo{width:34px; height:34px; border-radius:9px; background:var(--cyan);
+    display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--navy); font-size:15px;}
+  .brand h1{font-size:16px; margin:0; font-weight:700; letter-spacing:.2px;}
+  .brand .sub{font-size:11px; color:var(--cyan-2); margin-top:1px;}
+  .date-chip{font-size:11px; background:rgba(255,255,255,.08); padding:5px 9px; border-radius:20px; color:#CFE9EE;}
+
+  .status-row{display:flex; gap:8px; margin-top:12px;}
+  .status-pill{flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+    border-radius:12px; padding:8px 10px; min-width:0;}
+  .status-pill .label{font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#8FB4C4; margin-bottom:2px;}
+  .status-pill .value{font-size:14px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .status-pill.empty .value{color:#6E8CA0; font-weight:500;}
+  .status-pill.quai .value{color:var(--cyan-2);}
+
+  /* ---------- Main / Tabs content ---------- */
+  main{flex:1; padding:14px 14px 90px; overflow-y:auto;}
+  .tab-content{display:none;}
+  .tab-content.active{display:block;}
+
+  .card{background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(10,37,64,.06), 0 1px 2px rgba(10,37,64,.08);}
+  .card h2{font-size:14px; margin:0 0 10px; color:var(--navy); display:flex; align-items:center; gap:8px;}
+  .card h2 .dot{width:7px; height:7px; border-radius:50%; background:var(--cyan);}
+  .muted{color:var(--muted); font-size:12.5px; line-height:1.5;}
+
+  /* ---------- Buttons ---------- */
+  .btn{display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    border:none; border-radius:14px; font-size:16px; font-weight:700; padding:16px 14px;
+    cursor:pointer; transition:transform .08s ease, filter .15s ease; -webkit-user-select:none; user-select:none;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--cyan); color:var(--navy-3);}
+  .btn-primary:disabled{opacity:.5;}
+  .btn-stop{background:var(--danger); color:#fff;}
+  .btn-outline{background:#fff; color:var(--navy); border:2px solid #DCE6EE;}
+  .btn-ghost{background:transparent; color:var(--navy-2); font-weight:600; padding:10px;}
+  .btn-sm{padding:10px 12px; font-size:13px; border-radius:10px;}
+  .btn-row{display:flex; gap:10px;}
+  .btn-row .btn{flex:1;}
+  .btn-icon{background:rgba(255,255,255,.12); color:#fff; border-radius:12px; width:48px; height:48px;
+    flex:0 0 48px; padding:0; border:1px solid rgba(255,255,255,.18);}
+  .btn-icon.active-torch{background:var(--cyan); color:var(--navy-3);}
+
+  /* ---------- Scanner ---------- */
+  .scanner-wrap{position:relative; width:100%; aspect-ratio:3/4; background:var(--navy-3);
+    border-radius:18px; overflow:hidden; margin-bottom:12px;}
+  .scanner-wrap video{width:100%; height:100%; object-fit:cover; display:block;}
+  .scan-frame{position:absolute; inset:14% 10%; border:3px solid rgba(91,231,240,.85); border-radius:18px;
+    box-shadow:0 0 0 999px rgba(6,21,39,.38); pointer-events:none;}
+  .scan-frame::before,.scan-frame::after{content:""; position:absolute; width:26px; height:26px; border:4px solid var(--cyan);}
+  .scan-line{position:absolute; left:10%; right:10%; height:2px; background:var(--cyan);
+    box-shadow:0 0 8px var(--cyan); top:14%; animation:scanmove 1.9s ease-in-out infinite;}
+  @keyframes scanmove{0%{top:14%} 50%{top:82%} 100%{top:14%}}
+  .scanner-idle{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#8FB4C4; gap:10px; text-align:center; padding:20px;}
+  .scanner-idle .big-emoji{font-size:38px;}
+  .scanner-controls{position:absolute; top:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:5;}
+  .mode-badge{position:absolute; top:12px; left:12px; background:rgba(6,21,39,.6); color:#CFE9EE; font-size:10.5px;
+    padding:5px 9px; border-radius:20px; z-index:5; border:1px solid rgba(255,255,255,.15);}
+
+  /* ---------- Result / list rows ---------- */
+  .result-flash{border-radius:14px; padding:13px 14px; margin-bottom:12px; display:flex; align-items:flex-start; gap:11px;
+    animation:flashin .25s ease;}
+  @keyframes flashin{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);}}
+  .result-flash.quai{background:#0A2540; color:#fff;}
+  .result-flash.palette{background:#E4FBFC; color:var(--navy);}
+  .result-flash.warn{background:#FFF3E0; color:#7A4A00; border:1px solid #F2A93B;}
+  .result-flash .r-icon{font-size:20px; line-height:1;}
+  .result-flash .r-title{font-weight:800; font-size:14px;}
+  .result-flash .r-sub{font-size:12px; opacity:.85; margin-top:2px;}
+
+  .row-item{display:flex; align-items:center; justify-content:space-between; padding:10px 0;
+    border-bottom:1px solid #EEF2F6;}
+  .row-item:last-child{border-bottom:none;}
+  .row-item .ri-left{display:flex; align-items:center; gap:10px; min-width:0;}
+  .row-item .ri-badge{width:8px; height:8px; border-radius:50%; flex:0 0 8px;}
+  .ri-badge.quai{background:var(--navy);}
+  .ri-badge.palette{background:var(--cyan);}
+  .row-item .ri-text{min-width:0;}
+  .row-item .ri-title{font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row-item .ri-time{font-size:11px; color:var(--muted);}
+  .ri-remove{background:none; border:none; color:var(--danger); font-size:18px; padding:4px 8px; cursor:pointer;}
+  .empty-state{text-align:center; color:var(--muted); font-size:13px; padding:22px 10px;}
+
+  /* ---------- Form elements ---------- */
+  input[type=text], select{width:100%; padding:13px 14px; border-radius:12px; border:2px solid #DCE6EE;
+    font-size:15px; background:#fff; color:var(--text); font-weight:600;}
+  input[type=text]:focus, select:focus{outline:none; border-color:var(--cyan);}
+  label.field-label{font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted);
+    font-weight:700; display:block; margin-bottom:6px;}
+
+  details.collapsible{margin-bottom:14px;}
+  details.collapsible summary{list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+    background:var(--card); border-radius:14px; padding:14px 16px; font-weight:700; font-size:13.5px; color:var(--navy);
+    box-shadow:0 1px 3px rgba(10,37,64,.06);}
+  details.collapsible summary::-webkit-details-marker{display:none;}
+  details.collapsible summary::after{content:"›"; transform:rotate(90deg); font-size:20px; color:var(--muted); transition:transform .15s;}
+  details.collapsible[open] summary::after{transform:rotate(-90deg);}
+  details.collapsible .details-body{background:var(--card); border-radius:0 0 14px 14px; padding:14px 16px 16px;
+    margin-top:-6px; box-shadow:0 1px 3px rgba(10,37,64,.06);}
+  .pdf-frame{width:100%; height:340px; border:none; border-radius:12px; margin-top:10px; background:#f2f2f2;}
+
+  /* ---------- History tab ---------- */
+  .filters{display:flex; gap:10px; margin-bottom:14px;}
+  .filters > *{flex:1;}
+  .summary-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .summary-card{background:var(--navy); color:#fff; border-radius:14px; padding:12px 14px;}
+  .summary-card .sc-num{font-size:24px; font-weight:800; color:var(--cyan-2);}
+  .summary-card .sc-label{font-size:11px; color:#B9D3DE; margin-top:2px;}
+  table.hist-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.hist-table th{text-align:left; font-size:10.5px; text-transform:uppercase; color:var(--muted);
+    padding:6px 6px; border-bottom:2px solid #EEF2F6; letter-spacing:.3px;}
+  table.hist-table td{padding:8px 6px; border-bottom:1px solid #F2F5F8; vertical-align:top;}
+  table.hist-table td.badge-cell{white-space:nowrap;}
+  .type-tag{display:inline-block; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700;}
+  .type-tag.quai{background:#0A2540; color:#fff;}
+  .type-tag.palette{background:#E4FBFC; color:#007A82;}
+  .tournee-block{margin-bottom:16px;}
+  .tournee-block .tb-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .tournee-block .tb-head .tb-title{font-weight:800; font-size:13.5px; color:var(--navy);}
+  .tournee-block .tb-head .tb-count{font-size:11.5px; color:var(--muted);}
+
+  /* ---------- Bottom tab bar ---------- */
+  nav.tabbar{position:fixed; left:0; right:0; bottom:0; z-index:30; background:var(--navy-3);
+    border-top:1px solid rgba(255,255,255,.08); display:flex; padding:6px 10px calc(6px + env(safe-area-inset-bottom));
+    max-width:520px; margin:0 auto;}
+  nav.tabbar .tab-btn{flex:1; background:none; border:none; color:#7C9BAE; display:flex; flex-direction:column;
+    align-items:center; gap:3px; padding:8px 4px; font-size:11px; font-weight:700; cursor:pointer; border-radius:12px;}
+  nav.tabbar .tab-btn .ti{font-size:20px;}
+  nav.tabbar .tab-btn.active{color:var(--cyan-2); background:rgba(0,194,209,.1);}
+
+  .toast{position:fixed; left:16px; right:16px; bottom:78px; max-width:488px; margin:0 auto; z-index:50;
+    background:var(--navy-3); color:#fff; padding:12px 16px; border-radius:12px; font-size:13px; text-align:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.25); opacity:0; transform:translateY(10px); transition:all .25s ease; pointer-events:none;}
+  .toast.show{opacity:1; transform:translateY(0);}
+  .https-warning{background:#FFF3E0; border:1px solid #F2A93B; color:#7A4A00; border-radius:12px; padding:12px 14px;
+    font-size:12.5px; margin-bottom:14px; line-height:1.5;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand-row">
+      <div class="brand">
+        <div class="logo">D</div>
+        <div>
+          <h1>Delanchy</h1>
+          <div class="sub">Suivi quai &amp; tournées</div>
+        </div>
+      </div>
+      <div class="date-chip" id="dateChip">--</div>
+    </div>
+    <div class="status-row">
+      <div class="status-pill quai" id="pillQuai">
+        <div class="label">Porte de quai</div>
+        <div class="value">Aucune</div>
+      </div>
+      <div class="status-pill" id="pillTournee">
+        <div class="label">Tournée active</div>
+        <div class="value">Aucune</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ TAB 1 : SCAN & TOURNÉES ============ -->
+    <section id="tab-scan" class="tab-content active">
+
+      <div class="https-warning" id="httpsWarning" style="display:none;">
+        ⚠️ Cette page est ouverte en local (<code>file://</code>). Les navigateurs mobiles bloquent la caméra hors HTTPS.
+        Hébergez ce fichier (ex. GitHub Pages, gratuit) ou ouvrez-le via une adresse <code>https://</code> pour activer le scan.
+      </div>
+
+      <details class="collapsible" id="pdfDetails">
+        <summary>📄 Bordereau du jour (PDF)</summary>
+        <div class="details-body">
+          <p class="muted" style="margin-top:0;">Importez le PDF export du jour (w2bordereau_dly) pour le consulter pendant le scan.</p>
+          <input type="file" id="pdfInput" accept="application/pdf" style="width:100%;">
+          <iframe class="pdf-frame" id="pdfFrame" style="display:none;"></iframe>
+        </div>
+      </details>
+
+      <div class="card">
+        <h2><span class="dot"></span>Tournée active</h2>
+        <label class="field-label">Code tournée</label>
+        <div class="btn-row" style="margin-bottom:0;">
+          <input type="text" id="tourneeInput" placeholder="ex : 42D1" maxlength="12">
+          <button class="btn btn-primary btn-sm" style="flex:0 0 90px;" id="setTourneeBtn">Valider</button>
+        </div>
+        <p class="muted" style="margin:8px 0 0;">Se remplit aussi automatiquement à la lecture d'une étiquette palette.</p>
+      </div>
+
+      <div class="card" style="padding-bottom:12px;">
+        <h2><span class="dot"></span>Scanner</h2>
+        <div class="scanner-wrap" id="scannerWrap">
+          <video id="video" playsinline muted></video>
+          <div class="mode-badge" id="modeBadge">—</div>
+          <div class="scanner-controls">
+            <button class="btn-icon" id="torchBtn" title="Torche">🔦</button>
+            <button class="btn-icon" id="switchCamBtn" title="Changer de caméra">🔄</button>
+          </div>
+          <div class="scan-frame" id="scanFrame" style="display:none;"><div class="scan-line"></div></div>
+          <div class="scanner-idle" id="scannerIdle">
+            <div class="big-emoji">📷</div>
+            <div>Scanner à l'arrêt</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="startBtn">▶️ Démarrer le scan</button>
+        </div>
+        <button class="btn btn-ghost" id="manualBtn" style="margin-top:6px;">✍️ Saisie manuelle d'un code</button>
+      </div>
+
+      <div id="lastResultZone"></div>
+
+      <div class="card">
+        <h2><span class="dot"></span>Palettes de cette session <span class="muted" id="sessionCount" style="font-weight:400;">(0)</span></h2>
+        <div id="sessionList"><div class="empty-state">Aucune palette scannée pour l'instant.</div></div>
+      </div>
+
+    </section>
+
+    <!-- ============ TAB 2 : SUIVI JOURNALIER ============ -->
+    <section id="tab-history" class="tab-content">
+
+      <div class="filters">
+        <div>
+          <label class="field-label">Jour</label>
+          <input type="text" id="dateFilter" readonly>
+        </div>
+        <div>
+          <label class="field-label">Tournée</label>
+          <select id="tourneeFilter"><option value="">Toutes</option></select>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="sc-num" id="sumPalettes">0</div>
+          <div class="sc-label">Palettes scannées</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-num" id="sumTournees">0</div>
+          <div class="sc-label">Tournées actives</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot"></span>Récapitulatif par tournée</h2>
+        <div id="tourneeSummary"><div class="empty-state">Aucune donnée pour ce jour.</div></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot"></span>Détail des scans</h2>
+        <div style="overflow-x:auto;">
+          <table class="hist-table" id="histTable">
+            <thead><tr><th>Heure</th><th>Type</th><th>Tournée</th><th>Élément</th><th></th></tr></thead>
+            <tbody id="histBody"></tbody>
+          </table>
+        </div>
+        <div id="histEmpty" class="empty-state" style="display:none;">Aucun scan enregistré.</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-outline" id="exportCsvBtn">⬇️ Exporter CSV</button>
+        <button class="btn btn-outline" id="clearDayBtn" style="color:var(--danger); border-color:#F6C9C9;">🗑️ Effacer le jour</button>
+      </div>
+
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="tab-scan"><span class="ti">📡</span>Scan &amp; Tournées</button>
+    <button class="tab-btn" data-tab="tab-history"><span class="ti">📊</span>Suivi journalier</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ================= STORAGE ================= */
+  const STORE_KEY = "delanchy_quai_suivi_v1";
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){ console.warn("Lecture localStorage impossible", e); }
+    return { scans: [], activeQuai:"", activeTournee:"" };
+  }
+  function saveState(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e){ toast("⚠️ Sauvegarde locale impossible (mémoire pleine ?)"); }
+  }
+  let state = loadState();
+
+  /* ================= TOAST ================= */
+  let toastTimer;
+  function toast(msg){
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>el.classList.remove("show"), 2600);
+  }
+
+  /* ================= TABS ================= */
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
+      if(btn.dataset.tab === "tab-history") renderHistory();
+    });
+  });
+
+  /* ================= HEADER STATUS ================= */
+  function fmtDateChip(){
+    const d = new Date();
+    return d.toLocaleDateString("fr-FR",{weekday:"short", day:"2-digit", month:"short"});
+  }
+  function renderStatus(){
+    document.getElementById("dateChip").textContent = fmtDateChip();
+    const pq = document.getElementById("pillQuai");
+    const pt = document.getElementById("pillTournee");
+    pq.querySelector(".value").textContent = state.activeQuai || "Aucune";
+    pq.classList.toggle("empty", !state.activeQuai);
+    pt.querySelector(".value").textContent = state.activeTournee || "Aucune";
+    pt.classList.toggle("empty", !state.activeTournee);
+    document.getElementById("tourneeInput").value = state.activeTournee || "";
+  }
+
+  /* ================= HTTPS / CAMERA CONTEXT CHECK ================= */
+  const secureOk = window.isSecureContext === true;
+  if(!secureOk){
+    document.getElementById("httpsWarning").style.display = "block";
+  }
+
+  /* ================= QR PARSING / CLASSIFICATION ================= */
+  function classifyCode(raw){
+    const text = (raw || "").trim();
+    const upper = text.toUpperCase();
+
+    // Porte de quai : "QUAI N1".."QUAI N20" ou variantes avec espace/point
+    const quaiMatch = upper.match(/QUAI\s*(?:METRO\s*)?N[°.\s]*\s*(\d{1,2})/);
+    if(quaiMatch || upper.includes("PORTE DE QUAI")){
+      const num = quaiMatch ? quaiMatch[1] : "";
+      return {
+        type:"quai",
+        label: num ? ("QUAI N"+num) : text.split("\n")[0],
+        raw:text
+      };
+    }
+
+    // Palette : on tente d'extraire client + code tournée depuis le contenu multi-lignes
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const client = lines[0] || text;
+    let tournee = "";
+    for(const l of lines){
+      const m = l.match(/TOURN[ÉE]{1,2}E?\s*([A-Z0-9]{2,10})/i);
+      if(m){ tournee = m[1].toUpperCase(); break; }
+    }
+    return { type:"palette", label: client, tournee, raw:text };
+  }
+
+  /* ================= SCAN HANDLING ================= */
+  const lastResultZone = document.getElementById("lastResultZone");
+
+  function showResultFlash(kind, title, sub){
+    lastResultZone.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "result-flash " + kind;
+    div.innerHTML = '<div class="r-icon">' +
+      (kind==="quai" ? "🚪" : kind==="warn" ? "⚠️" : "📦") +
+      '</div><div><div class="r-title">'+ title +'</div><div class="r-sub">'+ (sub||"") +'</div></div>';
+    lastResultZone.appendChild(div);
+  }
+
+  let lastCodeSeen = "";
+  let lastCodeTime = 0;
+
+  function handleDetectedText(raw){
+    const now = Date.now();
+    if(raw === lastCodeSeen && (now - lastCodeTime) < 2200) return; // anti doublon rafale
+    lastCodeSeen = raw;
+    lastCodeTime = now;
+
+    const parsed = classifyCode(raw);
+
+    if(parsed.type === "quai"){
+      state.activeQuai = parsed.label;
+      saveState();
+      renderStatus();
+      showResultFlash("quai", "Porte de quai : " + parsed.label, "Définie comme porte active");
+      addScan({type:"quai", label:parsed.label, tournee: state.activeTournee, quai: parsed.label});
+      vibrate(40);
+      return;
+    }
+
+    // palette
+    if(parsed.tournee && !state.activeTournee){
+      state.activeTournee = parsed.tournee;
+      saveState();
+      renderStatus();
+    }
+
+    let warn = "";
+    if(parsed.tournee && state.activeTournee && parsed.tournee !== state.activeTournee){
+      warn = "⚠️ Cette palette semble liée à la tournée " + parsed.tournee + ", différente de la tournée active (" + state.activeTournee + ")";
+    }
+    if(!state.activeQuai){
+      warn = warn ? warn + " · Aucune porte de quai définie" : "⚠️ Aucune porte de quai définie";
+    }
+
+    // doublon dans la session (même quai + même tournée + même libellé aujourd'hui)
+    const dup = state.scans.find(s => s.date === todayStr() && s.type === "palette" &&
+      s.label === parsed.label && s.quai === state.activeQuai && s.tournee === state.activeTournee);
+
+    if(dup){
+      showResultFlash("warn", "Déjà scannée : " + parsed.label, "Cette palette a déjà été enregistrée sur ce quai/cette tournée");
+      vibrate([30,50,30]);
+      return;
+    }
+
+    addScan({type:"palette", label:parsed.label, tournee: state.activeTournee, quai: state.activeQuai});
+    showResultFlash(warn ? "warn" : "palette", parsed.label, warn || ("Tournée " + (state.activeTournee||"—") + " · Quai " + (state.activeQuai||"—")));
+    vibrate(40);
+    renderSessionList();
+  }
+
+  function vibrate(pattern){
+    if(navigator.vibrate){ try{ navigator.vibrate(pattern); }catch(e){} }
+  }
+
+  function addScan(entry){
+    state.scans.push({
+      id: Date.now() + "-" + Math.random().toString(36).slice(2,7),
+      date: todayStr(),
+      time: new Date().toISOString(),
+      ...entry
+    });
+    saveState();
+  }
+
+  /* ================= SESSION LIST (tab 1) ================= */
+  function renderSessionList(){
+    const list = document.getElementById("sessionList");
+    const countEl = document.getElementById("sessionCount");
+    const today = todayStr();
+    const items = state.scans.filter(s => s.date === today && s.type === "palette" &&
+      s.quai === state.activeQuai && s.tournee === state.activeTournee)
+      .sort((a,b)=> b.time.localeCompare(a.time));
+
+    countEl.textContent = "(" + items.length + ")";
+    if(!items.length){
+      list.innerHTML = '<div class="empty-state">Aucune palette scannée pour l\'instant.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    items.forEach(it=>{
+      const row = document.createElement("div");
+      row.className = "row-item";
+      const t = new Date(it.time).toLocaleTimeString("fr-FR",{hour:"2-digit", minute:"2-digit"});
+      row.innerHTML = '<div class="ri-left"><span class="ri-badge palette"></span>' +
+        '<div class="ri-text"><div class="ri-title">'+escapeHtml(it.label)+'</div>' +
+        '<div class="ri-time">'+t+'</div></div></div>' +
+        '<button class="ri-remove" data-id="'+it.id+'">✕</button>';
+      list.appendChild(row);
+    });
+    list.querySelectorAll(".ri-remove").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        state.scans = state.scans.filter(s=>s.id !== btn.dataset.id);
+        saveState();
+        renderSessionList();
+        toast("Palette retirée");
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  /* ================= TOURNÉE MANUELLE ================= */
+  document.getElementById("setTourneeBtn").addEventListener("click", ()=>{
+    const v = document.getElementById("tourneeInput").value.trim().toUpperCase();
+    state.activeTournee = v;
+    saveState();
+    renderStatus();
+    renderSessionList();
+    toast(v ? "Tournée active : " + v : "Tournée effacée");
+  });
+
+  /* ================= SAISIE MANUELLE D'UN CODE ================= */
+  document.getElementById("manualBtn").addEventListener("click", ()=>{
+    const v = prompt("Coller ou saisir le contenu du QR code :");
+    if(v && v.trim()) handleDetectedText(v.trim());
+  });
+
+  /* ================= PDF IMPORT ================= */
+  document.getElementById("pdfInput").addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const url = URL.createObjectURL(file);
+    const frame = document.getElementById("pdfFrame");
+    frame.src = url;
+    frame.style.display = "block";
+    document.getElementById("pdfDetails").open = true;
+  });
+
+  /* ================= SCANNER : caméra + détection ================= */
+  const video = document.getElementById("video");
+  const scannerIdle = document.getElementById("scannerIdle");
+  const scanFrame = document.getElementById("scanFrame");
+  const startBtn = document.getElementById("startBtn");
+  const modeBadge = document.getElementById("modeBadge");
+  const torchBtn = document.getElementById("torchBtn");
+  const switchCamBtn = document.getElementById("switchCamBtn");
+
+  let stream = null;
+  let scanning = false;
+  let rafId = null;
+  let currentFacing = "environment";
+  let torchOn = false;
+  let canvas = document.createElement("canvas");
+  let ctx = canvas.getContext("2d", { willReadFrequently:true });
+
+  const nativeDetectorSupported = "BarcodeDetector" in window;
+  let barcodeDetector = null;
+  if(nativeDetectorSupported){
+    try{
+      barcodeDetector = new window.BarcodeDetector({
+        formats:["qr_code","code_128","code_39","code_93","codabar","ean_13","ean_8","upc_a","upc_e","itf","pdf417","aztec","data_matrix"]
+      });
+      modeBadge.textContent = "Scanner universel";
+    }catch(e){
+      barcodeDetector = null;
+      modeBadge.textContent = "Scanner QR";
+    }
+  } else {
+    modeBadge.textContent = "Scanner QR";
+  }
+
+  async function startScan(){
+    if(!secureOk){
+      toast("Caméra bloquée : ouvrez la page en HTTPS");
+      return;
+    }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      toast("Caméra non disponible sur ce navigateur");
+      return;
+    }
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode:{ ideal: currentFacing }, width:{ideal:1280}, height:{ideal:1280} },
+        audio:false
+      });
+      video.srcObject = stream;
+      await video.play();
+      scanning = true;
+      scannerIdle.style.display = "none";
+      scanFrame.style.display = "block";
+      startBtn.textContent = "⏹️ Arrêter le scan";
+      startBtn.classList.remove("btn-primary");
+      startBtn.classList.add("btn-stop");
+
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      torchBtn.style.opacity = caps.torch ? "1" : "0.35";
+
+      tick();
+    }catch(err){
+      console.error(err);
+      toast("Impossible d'accéder à la caméra : " + (err.message||err.name||"erreur"));
+    }
+  }
+
+  function stopScan(){
+    scanning = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
+    video.pause();
+    video.srcObject = null;
+    scannerIdle.style.display = "flex";
+    scanFrame.style.display = "none";
+    startBtn.textContent = "▶️ Démarrer le scan";
+    startBtn.classList.add("btn-primary");
+    startBtn.classList.remove("btn-stop");
+    torchOn = false;
+    torchBtn.classList.remove("active-torch");
+  }
+
+  async function tick(){
+    if(!scanning) return;
+    try{
+      if(barcodeDetector){
+        const codes = await barcodeDetector.detect(video);
+        if(codes && codes.length){
+          handleDetectedText(codes[0].rawValue);
+        }
+      } else if(window.jsQR && video.readyState === video.HAVE_ENOUGH_DATA){
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts:"dontInvert" });
+        if(code && code.data) handleDetectedText(code.data);
+      }
+    }catch(e){ /* frame ignorée */ }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  startBtn.addEventListener("click", ()=>{ scanning ? stopScan() : startScan(); });
+
+  switchCamBtn.addEventListener("click", async ()=>{
+    currentFacing = (currentFacing === "environment") ? "user" : "environment";
+    if(scanning){ stopScan(); await startScan(); }
+    toast(currentFacing === "environment" ? "Caméra arrière" : "Caméra avant");
+  });
+
+  torchBtn.addEventListener("click", async ()=>{
+    if(!stream) return;
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if(!caps.torch){ toast("Torche non disponible sur cet appareil"); return; }
+    torchOn = !torchOn;
+    try{
+      await track.applyConstraints({ advanced:[{ torch: torchOn }] });
+      torchBtn.classList.toggle("active-torch", torchOn);
+    }catch(e){ toast("Torche indisponible"); }
+  });
+
+  /* ================= HISTORIQUE (tab 2) ================= */
+  function typeLabel(t){ return t === "quai" ? "Quai" : "Palette"; }
+
+  function renderHistory(){
+    const today = todayStr();
+    document.getElementById("dateFilter").value = new Date().toLocaleDateString("fr-FR",{weekday:"long", day:"2-digit", month:"long"});
+
+    const dayScans = state.scans.filter(s => s.date === today);
+
+    // filtre tournée
+    const tourneeSet = [...new Set(dayScans.map(s=>s.tournee).filter(Boolean))].sort();
+    const filterSel = document.getElementById("tourneeFilter");
+    const prevVal = filterSel.value;
+    filterSel.innerHTML = '<option value="">Toutes</option>' + tourneeSet.map(t=>'<option value="'+t+'">'+t+'</option>').join("");
+    filterSel.value = tourneeSet.includes(prevVal) ? prevVal : "";
+
+    const filterVal = filterSel.value;
+    const filtered = filterVal ? dayScans.filter(s=>s.tournee === filterVal) : dayScans;
+
+    // résumé
+    const paletteScans = filtered.filter(s=>s.type==="palette");
+    document.getElementById("sumPalettes").textContent = paletteScans.length;
+    document.getElementById("sumTournees").textContent = new Set(filtered.map(s=>s.tournee).filter(Boolean)).size;
+
+    // récap par tournée
+    const byTournee = {};
+    filtered.forEach(s=>{
+      const key = s.tournee || "(sans tournée)";
+      if(!byTournee[key]) byTournee[key] = { palettes:0, quais:new Set() };
+      if(s.type === "palette") byTournee[key].palettes++;
+      if(s.quai) byTournee[key].quais.add(s.quai);
+    });
+    const summaryEl = document.getElementById("tourneeSummary");
+    const keys = Object.keys(byTournee).sort();
+    if(!keys.length){
+      summaryEl.innerHTML = '<div class="empty-state">Aucune donnée pour ce jour.</div>';
+    } else {
+      summaryEl.innerHTML = keys.map(k=>{
+        const d = byTournee[k];
+        return '<div class="tournee-block"><div class="tb-head">' +
+          '<div class="tb-title">Tournée ' + escapeHtml(k) + '</div>' +
+          '<div class="tb-count">' + d.palettes + ' palette(s)</div></div>' +
+          '<div class="muted">Quai(s) : ' + (d.quais.size ? [...d.quais].join(", ") : "—") + '</div></div>';
+      }).join("");
+    }
+
+    // table détail (plus récent en premier)
+    const body = document.getElementById("histBody");
+    const sorted = [...filtered].sort((a,b)=> b.time.localeCompare(a.time));
+    document.getElementById("histEmpty").style.display = sorted.length ? "none" : "block";
+    document.getElementById("histTable").style.display = sorted.length ? "table" : "none";
+    body.innerHTML = sorted.map(s=>{
+      const t = new Date(s.time).toLocaleTimeString("fr-FR",{hour:"2-digit", minute:"2-digit"});
+      return "<tr><td>"+t+"</td><td class='badge-cell'><span class='type-tag "+s.type+"'>"+typeLabel(s.type)+"</span></td>" +
+        "<td>"+escapeHtml(s.tournee||"—")+"</td><td>"+escapeHtml(s.label)+ (s.type==='palette' && s.quai ? " <span class='muted'>· "+escapeHtml(s.quai)+"</span>" : "") +"</td>" +
+        "<td><button class='ri-remove' data-id='"+s.id+"'>✕</button></td></tr>";
+    }).join("");
+    body.querySelectorAll(".ri-remove").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        state.scans = state.scans.filter(s=>s.id !== btn.dataset.id);
+        saveState();
+        renderHistory();
+        renderSessionList();
+      });
+    });
+  }
+
+  document.getElementById("tourneeFilter").addEventListener("change", renderHistory);
+
+  document.getElementById("exportCsvBtn").addEventListener("click", ()=>{
+    const today = todayStr();
+    const rows = state.scans.filter(s=>s.date===today);
+    if(!rows.length){ toast("Rien à exporter aujourd'hui"); return; }
+    let csv = "Date;Heure;Type;Tournee;Quai;Element\n";
+    rows.forEach(s=>{
+      const t = new Date(s.time).toLocaleTimeString("fr-FR");
+      csv += [s.date, t, typeLabel(s.type), s.tournee||"", s.quai||"", (s.label||"").replace(/;/g,",")].join(";") + "\n";
+    });
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "suivi_quai_" + today + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("clearDayBtn").addEventListener("click", ()=>{
+    if(!confirm("Effacer tous les scans d'aujourd'hui ? Cette action est irréversible.")) return;
+    const today = todayStr();
+    state.scans = state.scans.filter(s=>s.date !== today);
+    saveState();
+    renderHistory();
+    renderSessionList();
+    toast("Données du jour effacées");
+  });
+
+  /* ================= INIT ================= */
+  renderStatus();
+  renderSessionList();
+  renderHistory();
+
+  window.addEventListener("beforeunload", ()=>{ if(scanning) stopScan(); });
+})();
+</script>
+</body>
+</html>
